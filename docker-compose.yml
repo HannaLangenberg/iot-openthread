@@ -44,8 +44,9 @@ services:
     restart: unless-stopped
     ports:
       - 1883:1883
+      - 9001:9001
     volumes:
-      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
   
@@ -60,6 +61,8 @@ services:
       INFLUX_API_TOKEN: ${INFLUX_API_TOKEN}
       INFLUX_ORG: ${INFLUX_ORG}
       INFLUX_BUCKET: ${INFLUX_BUCKET}
+      MOSQUITTO_USERNAME: ${MOSQUITTO_USERNAME}
+      MOSQUITTO_PASSWORD: ${MOSQUITTO_PASSWORD}
     volumes:
       - ./telegraf/config/telegraf.conf:/etc/telegraf/telegraf.conf:ro  
       

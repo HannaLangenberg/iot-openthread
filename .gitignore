@@ -160,3 +160,4 @@ secrets/
 #mosquitto
 mosquitto/data/
 mosquitto/log/
+mosquitto/config/mosquitto.passwd
