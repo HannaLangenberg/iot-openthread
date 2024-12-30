@@ -156,3 +156,7 @@ iot-ot/
 
 # secrets
 secrets/
+
+#mosquitto
+mosquitto/data/
+mosquitto/log/
