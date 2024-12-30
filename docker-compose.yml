@@ -1,0 +1,137 @@
+name: iot-ws24
+# docker volume create ws24_influxdb
+# docker volume create ws24_grafana
+
+
+# Docker volumes
+volumes:
+  influxdb-data:
+    name: "influxdb_data"
+    external: true  # Indicates that the volume must be pre-created or exists outside Compose
+
+  influxdb-config:
+    name: "influxdb_config"
+
+  grafana_storage:
+    name: "grafana_storage"
+    external: true
+
+# SERVICES
+services:
+  # Automatic container updates
+  watchtower:
+    image: containrrr/watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --stop-timeout 60s --schedule "0 0 4 * * *" --cleanup=true
+  
+  # CoAP
+  # coap:
+  #   container_name: coap
+  #   restart: unless-stopped
+  #   build:
+  #     context: ./coap-server
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "5683:5683"
+  #     - "5683:5683/udp"
+  
+  # MQTT
+  mosquitto:
+    image: eclipse-mosquitto
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - 1883:1883
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+  
+  # Telegraf
+  telegraf:
+    image: docker.io/telegraf:latest
+    container_name: telegraf
+    restart: unless-stopped
+    environment:
+      INFLUX_URL: ${INFLUX_URL}
+      INFLUX_SKIP_DATABASE_CREATION: false
+      INFLUX_API_TOKEN: ${INFLUX_API_TOKEN}
+      INFLUX_ORG: ${INFLUX_ORG}
+      INFLUX_BUCKET: ${INFLUX_BUCKET}
+    volumes:
+      - ./telegraf/config/telegraf.conf:/etc/telegraf/telegraf.conf:ro  
+      
+    depends_on:
+      - mosquitto
+      - influxdb
+    labels:
+      - com.centurylinklabs.watchtower.monitor-only="true"
+
+  # InfluxDB
+  influxdb:
+    image: influxdb:2
+    container_name: influxdb
+    restart: unless-stopped
+    ports:
+      - 8086:8086
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUX_USERNAME}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUX_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_API_TOKEN}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUX_ORG} 
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUX_BUCKET}
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+
+  # Grafana
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    restart: unless-stopped
+    depends_on:
+      - influxdb
+    ports: 
+      - "3000:3000"
+    environment:
+      INFLUX_URL: ${INFLUX_URL}
+      INFLUX_API_TOKEN: ${INFLUX_API_TOKEN}
+      INFLUX_ORG: ${INFLUX_ORG}
+      INFLUX_BUCKET: ${INFLUX_BUCKET}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USERNAME}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      GF_INSTALL_PLUGINS: 
+    volumes:
+      - grafana_storage:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+
+# Config Files
+# configs:
+#   telegraf.conf:
+#     content: |
+#       [agent]
+#         interval = "10m"
+#         round_interval = true
+#         debug = true
+#         quiet = false
+
+#       [[inputs.mqtt_consumer]]
+#         servers = ["tcp://mosquitto:1883"]
+#         topics = [
+#           "foo/#"
+#         ]
+#         data_format = "value"
+#         topic_tag = "topic"
+
+#       [[outputs.file]]
+#         files = ["stdout"]
+#         data_format = "json"
+#         json_timestamp_units = "1s"
+
+#   mosquitto.conf:
+#     content: |
+#       listener 1883
+#       allow_anonymous true
