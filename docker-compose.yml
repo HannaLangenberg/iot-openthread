@@ -27,15 +27,16 @@ services:
     command: --stop-timeout 60s --schedule "0 0 4 * * *" --cleanup=true
   
   # CoAP
-  # coap:
-  #   container_name: coap
-  #   restart: unless-stopped
-  #   build:
-  #     context: ./coap-server
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "5683:5683"
-  #     - "5683:5683/udp"
+  coap:
+    container_name: coap
+    restart: unless-stopped
+    build:
+      # context: ./coap-server #??
+      context: ./coap_server
+      dockerfile: Dockerfile
+    ports:
+      - "5683:5683"
+      - "5683:5683/udp"
   
   # MQTT
   mosquitto:
