@@ -15,5 +15,9 @@ COPY * ./
 EXPOSE 5683
 
 # launch the CoAP-server
-CMD ["python", "-m", "coap-server"]
-# CMD ["python", "-m", "mqtt_client"] # To test the basic mqtt broker
+# - ??
+# CMD ["python", "-m", "coap-server"]
+CMD ["python", "-m", "coap_server"]
+
+# To test the basic mqtt broker
+# CMD ["python", "-m", "mqtt_client"]
