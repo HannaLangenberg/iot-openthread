@@ -31,7 +31,6 @@ services:
     container_name: coap
     restart: unless-stopped
     build:
-      # context: ./coap-server #??
       context: ./coap_server
       dockerfile: Dockerfile
     ports:

@@ -3,6 +3,7 @@ import random
 import time
 import paho.mqtt.client as mqtt
 from paho.mqtt.enums import CallbackAPIVersion
+from datetime import datetime
 import json
 
 client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)  # "CoAP_mqtt_client")
@@ -10,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 logging.getLogger("coap_server").setLevel(logging.DEBUG)
 
 examples = {
-    "9a:d6:18:d1:e5:e5:7d:4b":
+    "52:9d:cd:3b:8a:73:dd:58":
     {
         "mac_addr":      "52:9d:cd:3b:8a:73:dd:58",
         "RLOC16":        "0x6000",
@@ -22,12 +23,20 @@ examples = {
         "IP_TxFailures": 0,
         "temperature":   19.59375,
         "humidity":      85.1875,
-        "neighbor_rssi": {
-            "neighbor1": {
-                "MAC": "be:73:09:12:a3:31:2e:52",
+        "neighbor_rssi": [
+            {
+                "MAC": "8e:d0:82:0b:a8:e5:c8:93",
                 "RSSI_AVG": -22
-            }
-        }
+            },
+            {
+                "MAC": "3a:4f:ec:85:c0:65:36:19",
+                "RSSI_AVG": -45
+            },
+            {
+                "MAC": "8a:00:f6:c3:24:52:4d:25",
+                "RSSI_AVG": -78
+            },
+        ]
     },
     "8e:d0:82:0b:a8:e5:c8:93":
     {
@@ -41,12 +50,20 @@ examples = {
         "IP_TxFailures": 0,
         "temperature":   21.7812,
         "humidity":      81.5677,
-        "neighbor_rssi": {
-            "neighbor1": {
-                "MAC": "be:73:09:12:a3:31:2e:52",
-                "RSSI_AVG": -50
-            }
-        }
+        "neighbor_rssi": [
+            {
+                "MAC": "52:9d:cd:3b:8a:73:dd:58",
+                "RSSI_AVG": -12
+            },
+            {
+                "MAC": "3a:4f:ec:85:c0:65:36:19",
+                "RSSI_AVG": -23
+            },
+            {
+                "MAC": "8a:00:f6:c3:24:52:4d:25",
+                "RSSI_AVG": -34
+            },
+        ]
     },
     "3a:4f:ec:85:c0:65:36:19":
     {
@@ -60,12 +77,20 @@ examples = {
         "IP_TxFailures": 0,
         "temperature":   23.4567,
         "humidity":      28.3453,
-        "neighbor_rssi": {
-            "neighbor1": {
-                "MAC": "be:73:09:12:a3:31:2e:52",
-                "RSSI_AVG": -41
-            }
-        }
+        "neighbor_rssi": [
+            {
+                "MAC": "52:9d:cd:3b:8a:73:dd:58",
+                "RSSI_AVG": -78
+            },
+            {
+                "MAC": "8e:d0:82:0b:a8:e5:c8:93",
+                "RSSI_AVG": -23
+            },
+            {
+                "MAC": "8a:00:f6:c3:24:52:4d:25",
+                "RSSI_AVG": -48
+            },
+        ]
     },
     "8a:00:f6:c3:24:52:4d:25":
     {
@@ -79,12 +104,20 @@ examples = {
         "IP_TxFailures": 0,
         "temperature":   87.3242,
         "humidity":      43.4657,
-        "neighbor_rssi": {
-            "neighbor1": {
-                "MAC": "be:73:09:12:a3:31:2e:52",
-                "RSSI_AVG": -88
-            }
-        }
+        "neighbor_rssi": [
+            {
+                "MAC": "52:9d:cd:3b:8a:73:dd:58",
+                "RSSI_AVG": -26
+            },
+            {
+                "MAC": "8e:d0:82:0b:a8:e5:c8:93",
+                "RSSI_AVG": -38
+            },
+            {
+                "MAC": "3a:4f:ec:85:c0:65:36:19",
+                "RSSI_AVG": -26
+            },
+        ]
     },
 }
 
@@ -101,14 +134,10 @@ def connect_mqtt(
         else:
             logging.warning(f"Connection to MQTT failed with code {rc}")
 
-    def on_disconnect(client, userdata, reason_code, properties):
-        logging.warning(f"Lost connection to MQTT Server: {reason_code}")
-
     try:
         client.username_pw_set(username, password=password)
         client.connect(broker, port, keepalive)
         client.on_connect = on_connect
-        client.on_disconnect = on_disconnect
         client.loop_start()
     except ConnectionRefusedError as e:
         logging.error(f'Connection to MQTT failed: "{e}"')
@@ -131,9 +160,21 @@ def publish_mqtt_message():
                 topic = base_topic + node
                 h = values["humidity"] + random.randint(-5, 5)
                 t = values["temperature"] + random.randint(-5, 5)
+                for neighbor in values["neighbor_rssi"]:
+                    neighbor["RSSI_AVG"] += random.randint(-5, 5)
+                    
+                # n1 = values["neighbor_rssi"]["neighbor1"]["RSSI_AVG"] + random.randint(-5, 5)
+                # n2 = values["neighbor_rssi"]["neighbor2"]["RSSI_AVG"] + random.randint(-5, 5)
+                # n3 = values["neighbor_rssi"]["neighbor3"]["RSSI_AVG"] + random.randint(-5, 5)
+                timestamp = datetime.now().timestamp()
+                
                 values["humidity"] = h
                 values["temperature"] = t
-                # b = battery_voltage_mv + random.randint(-5, 5)
+                # values["neighbor_rssi"]["neighbor1"]["RSSI_AVG"] = n1
+                # values["neighbor_rssi"]["neighbor2"]["RSSI_AVG"] = n2
+                # values["neighbor_rssi"]["neighbor3"]["RSSI_AVG"] = n3
+                values["timestamp_ms"] = timestamp
+                
                 json_string = json.dumps(values)
                 # payload = f'{{"humidity":{h}, "temperature":{t}, "battery_voltage_mv":{b}}}'
                 res = client.publish(
