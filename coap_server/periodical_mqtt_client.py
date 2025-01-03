@@ -1,16 +1,52 @@
 import logging
+import os
 import random
 import time
 import paho.mqtt.client as mqtt
 from paho.mqtt.enums import CallbackAPIVersion
 from datetime import datetime
 import json
+from mqtt_client import MqttClient
 
-client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)  # "CoAP_mqtt_client")
+client = MqttClient()
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("coap_server").setLevel(logging.DEBUG)
 
-examples = {
+
+example_payload = {
+    "mac_addr":      "52:9d:cd:3b:8a:73:dd:58",
+    "RLOC16":        "0x6000",
+    "timestamp_ms":  78008155,
+    "tx_pwr":        20,
+    "MAC_RxErrFcs":  0,
+    "MAC_TxErrAbort":0,
+    "IP_RxFailures": 0,
+    "IP_TxFailures": 0,
+    "temperature":   19.59375,
+    "humidity":      85.1875,
+    "neighbor_rssi": [
+        {
+            "MAC": "8e:d0:82:0b:a8:e5:c8:93",
+            "RSSI_AVG": -22
+        },
+        {
+            "MAC": "3a:4f:ec:85:c0:65:36:19",
+            "RSSI_AVG": -45
+        },
+        {
+            "MAC": "8a:00:f6:c3:24:52:4d:25",
+            "RSSI_AVG": -78
+        },
+    ]
+}
+f""" @Mohamed:
+Daten wie sie an CoAP ankommen:
+Endpoint: /sensor
+Payload: {example_payload}
+"""
+
+
+dummy_data = {
     "52:9d:cd:3b:8a:73:dd:58":
     {
         "mac_addr":      "52:9d:cd:3b:8a:73:dd:58",
@@ -121,30 +157,7 @@ examples = {
     },
 }
 
-def connect_mqtt(
-        broker: str,
-        username: str, 
-        password: str,
-        port: int = 1883,
-        keepalive: int = 60, 
-    ):
-    def on_connect(client, userdata, flags, rc, properties):
-        if rc == 0:
-            logging.info("Connected to MQTT Broker")
-        else:
-            logging.warning(f"Connection to MQTT failed with code {rc}")
-
-    try:
-        client.username_pw_set(username, password=password)
-        client.connect(broker, port, keepalive)
-        client.on_connect = on_connect
-        client.loop_start()
-    except ConnectionRefusedError as e:
-        logging.error(f'Connection to MQTT failed: "{e}"')
-    except Exception as e:
-        logging.error(f'Exception in MQTT lib: "{e}"')
-
-def publish_mqtt_message():
+def publish_messages_periodically():
     msg_count = 0
     base_topic = 'sensor/'
     
@@ -152,7 +165,7 @@ def publish_mqtt_message():
     try:
         while msg_count < 10:
             msg_count += 1
-            for node, values in examples.items():
+            for node, values in dummy_data.items():
                 topic = base_topic + node
                 h = values["humidity"] + random.randint(-5, 5)
                 t = values["temperature"] + random.randint(-5, 5)
@@ -165,32 +178,30 @@ def publish_mqtt_message():
                 values["timestamp_ms"] = timestamp
                 
                 json_string = json.dumps(values)
-                res = client.publish(
-                    topic=topic, 
-                    payload=json_string
-                )
-                status = res[0]
-                if status == 0:
-                    logging.info("Message "+ str(msg_count) + " is published to topic " + topic)
-                else:
-                    logging.error("Failed to send message to topic " + topic)
-                    if not client.is_connected():
-                        logging.error("Client not connected, exiting...")
-                        break
+                f""" @Mohamed
+                Die Daten wie hier publishen. Payload ist dabei die Daten vom H2 als
+                json string. Der topic ist sensor/[mac_address vom H2]
+                Alle Daten von jedem H2 kommen am CoAP server am Endpoint /sensor an. Du
+                musst die Daten einmal parsen als dict und die mac adresse da raus holen
+                und ans topic für mqtt anhängen.
+                Beispiel, wie die Daten bei CoAP ankommen: {example_payload}
+                """
+                client.publish_mqtt_message(topic=topic, payload=json_string)
+                
             time.sleep(10)
             
-    except Exception as e:
-        logging.error(f'Failed to publish topic {topic}: "{e}"')
     finally:
-        client.disconnect()
-        client.loop_stop()
+        client.disconnect_mqtt()
 
 if __name__ == "__main__":
-    broker_hostname = "mosquitto"
-    port = 1883
-    user = "admin"
-    password = "123456789"
-    connect_mqtt(broker_hostname, user, password, port=port)
-    
+    """ @Mohamed
+    Den mqtt client initialisieren wie hier ↓
+    Die Umgebungsvariablen werden im docker compose für den Container aus .env gesetzt.
+    """
+    mqtt_hostname = "mosquitto"
+    port = int(os.getenv('MOSQUITTO_PORT', 1883))
+    user = os.getenv('MOSQUITTO_USERNAME', "admin")
+    password = os.getenv('MOSQUITTO_PASSWORD', "123456789")
+    client.connect_mqtt(mqtt_hostname, port, user, password)
 
-    publish_mqtt_message()
+    publish_messages_periodically()

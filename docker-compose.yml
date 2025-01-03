@@ -36,6 +36,10 @@ services:
     ports:
       - "5683:5683"
       - "5683:5683/udp"
+    environment:
+      MOSQUITTO_USERNAME: ${MOSQUITTO_USERNAME}
+      MOSQUITTO_PASSWORD: ${MOSQUITTO_PASSWORD}
+      MOSQUITTO_PORT: ${MOSQUITTO_PORT}
     depends_on:
       - mosquitto
   
