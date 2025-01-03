@@ -40,10 +40,10 @@ import asyncio
 import logging
 from datetime import datetime
 
-import aiocoap
-import aiocoap.resource as resource
-from aiocoap import Message, Code
-from aiocoap.numbers.contentformat import ContentFormat
+import aiocoap  # type: ignore
+import aiocoap.resource as resource  # type: ignore
+from aiocoap import Message, Code  # type: ignore
+from aiocoap.numbers.contentformat import ContentFormat  # type: ignore
 
 # Handler for all resources, responds with a generic message
 class AllResourcesHandler(resource.Resource):

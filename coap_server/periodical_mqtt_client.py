@@ -2,8 +2,8 @@ import logging
 import os
 import random
 import time
-import paho.mqtt.client as mqtt
-from paho.mqtt.enums import CallbackAPIVersion
+import paho.mqtt.client as mqtt  # type: ignore
+from paho.mqtt.enums import CallbackAPIVersion  # type: ignore
 from datetime import datetime
 import json
 from mqtt_client import MqttClient

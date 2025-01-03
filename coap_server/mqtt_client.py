@@ -1,7 +1,7 @@
 import logging
 import time
-import paho.mqtt.client as mqtt
-from paho.mqtt.enums import CallbackAPIVersion
+import paho.mqtt.client as mqtt  # type: ignore
+from paho.mqtt.enums import CallbackAPIVersion  # type: ignore
 from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
