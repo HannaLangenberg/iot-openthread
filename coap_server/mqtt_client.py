@@ -147,10 +147,6 @@ def connect_mqtt(
 def publish_mqtt_message():
     msg_count = 0
     base_topic = 'sensor/'
-    # topic = 'test_topic/test/'
-    humidity = 21
-    temperature = 29
-    battery_voltage_mv = 26
     
     # Publish to MQTT Broker
     try:
@@ -162,21 +158,13 @@ def publish_mqtt_message():
                 t = values["temperature"] + random.randint(-5, 5)
                 for neighbor in values["neighbor_rssi"]:
                     neighbor["RSSI_AVG"] += random.randint(-5, 5)
-                    
-                # n1 = values["neighbor_rssi"]["neighbor1"]["RSSI_AVG"] + random.randint(-5, 5)
-                # n2 = values["neighbor_rssi"]["neighbor2"]["RSSI_AVG"] + random.randint(-5, 5)
-                # n3 = values["neighbor_rssi"]["neighbor3"]["RSSI_AVG"] + random.randint(-5, 5)
                 timestamp = datetime.now().timestamp()
                 
                 values["humidity"] = h
                 values["temperature"] = t
-                # values["neighbor_rssi"]["neighbor1"]["RSSI_AVG"] = n1
-                # values["neighbor_rssi"]["neighbor2"]["RSSI_AVG"] = n2
-                # values["neighbor_rssi"]["neighbor3"]["RSSI_AVG"] = n3
                 values["timestamp_ms"] = timestamp
                 
                 json_string = json.dumps(values)
-                # payload = f'{{"humidity":{h}, "temperature":{t}, "battery_voltage_mv":{b}}}'
                 res = client.publish(
                     topic=topic, 
                     payload=json_string
