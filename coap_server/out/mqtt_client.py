@@ -17,7 +17,7 @@ class MqttClient:
             self.client.username_pw_set(username, password)
             self.client.connect(mqtt_hostname, port, keepalive)
             self.client.on_connect = on_connect
-            self.client.on_disconnect = on_disconnect
+            # self.client.on_disconnect = on_disconnect
             self.client.loop_start()
         except ConnectionRefusedError as e:
             logging.error(f'Connection to MQTT failed: "{e}"')
@@ -38,6 +38,7 @@ class MqttClient:
                 logging.error("Failed to send message to topic " + topic)
                 if not self.client.is_connected():
                     logging.error("Client was not connected")
+            
         except Exception as e:
             logging.error(f'Failed to publish topic {topic}: "{e}"')
     

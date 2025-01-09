@@ -1,7 +1,7 @@
 name: iot-ws24
+
 # docker volume create ws24_influxdb
 # docker volume create ws24_grafana
-
 
 # Docker volumes
 volumes:
@@ -25,6 +25,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     command: --stop-timeout 60s --schedule "0 0 4 * * *" --cleanup=true
+    networks:
+      - iot-net
   
   # CoAP
   coap:
@@ -37,11 +39,16 @@ services:
       - "5683:5683"
       - "5683:5683/udp"
     environment:
+      COAP_BIND_NAME: 0.0.0.0
+      MQTT_SERVER: mosquitto
+      # MQTT_SERVER: mqtt
       MOSQUITTO_USERNAME: ${MOSQUITTO_USERNAME}
       MOSQUITTO_PASSWORD: ${MOSQUITTO_PASSWORD}
       MOSQUITTO_PORT: ${MOSQUITTO_PORT}
     depends_on:
       - mosquitto
+    networks:
+      - iot-net
   
   # MQTT
   mosquitto:
@@ -55,6 +62,8 @@ services:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
+    networks:
+      - iot-net
   
   # Telegraf
   telegraf:
@@ -70,7 +79,9 @@ services:
       MOSQUITTO_USERNAME: ${MOSQUITTO_USERNAME}
       MOSQUITTO_PASSWORD: ${MOSQUITTO_PASSWORD}
     volumes:
-      - ./telegraf/config/telegraf.conf:/etc/telegraf/telegraf.conf:ro  
+      - ./telegraf/config/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    networks:
+      - iot-net
       
     depends_on:
       - mosquitto
@@ -95,6 +106,8 @@ services:
     volumes:
       - influxdb-data:/var/lib/influxdb2
       - influxdb-config:/etc/influxdb2
+    networks:
+      - iot-net
 
   # Grafana
   grafana:
@@ -116,6 +129,17 @@ services:
     volumes:
       - grafana_storage:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - iot-net
+
+# Network
+# https://docs.docker.com/engine/daemon/ipv6/
+networks:
+  iot-net:
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 2001:db8::/64
 
 # Config Files
 # configs:
