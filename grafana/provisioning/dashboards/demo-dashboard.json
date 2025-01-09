@@ -281,6 +281,101 @@
         "x": 0,
         "y": 18
       },
+      "id": 10,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.4.0",
+      "repeat": "mac_addr",
+      "repeatDirection": "v",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "query": "from(bucket: \"measurements\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r.mac_addr == \"${mac_addr}\" and r._field == \"air_quality\")\r\n",
+          "refId": "A"
+        }
+      ],
+      "title": "${mac_addr} - Air Quality",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "P5697886F9CA74929"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
       "id": 6,
       "maxPerRow": 4,
       "options": {
@@ -359,7 +454,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -374,7 +470,100 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 28
+        "y": 38
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "query": "from(bucket: \"measurements\")\r\n  |> range(start: v.timeRangeStart, stop:v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    r._field == \"air_quality\"\r\n  )",
+          "refId": "A"
+        }
+      ],
+      "title": "Air Quality",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "P5697886F9CA74929"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 46
       },
       "id": 4,
       "options": {
@@ -451,7 +640,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -466,7 +656,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 36
+        "y": 54
       },
       "id": 2,
       "options": {
@@ -494,6 +684,45 @@
       ],
       "title": "Humidity",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "P5697886F9CA74929"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 63
+      },
+      "id": 9,
+      "options": {
+        "edges": {
+          "mainStatUnit": "none"
+        },
+        "nodes": {
+          "arcs": [],
+          "mainStatUnit": "string"
+        }
+      },
+      "pluginVersion": "11.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "query": "import \"math\"\r\n\r\nedges = from(bucket: \"measurements\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"sensor\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"rssi_avg\")\r\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false) // Aggregate data to 1-hour intervals\r\n  |> map(fn: (r) => ({\r\n      id: r.mac_addr + \"-\" + r.neighbor_mac,\r\n      source: r.mac_addr,\r\n      target: r.neighbor_mac,\r\n      mainstat: string(v: math.round(x: r._value * 100.0) / 100.0), // Round to 2 decimal places\r\n      secondarystat: \"RSSI\",\r\n      thickness: math.round(x: (if r._value < 0.0 then float(v: -r._value) / 10.0 else float(v: r._value) / 10.0) * 100.0) / 100.0, // Explicit float conversion and rounding\r\n      highlighted: r._value < -70.0, // Example condition\r\n      color: if r._value < -80.0 then \"red\" else if r._value < -60.0 then \"orange\" else \"cyan\"\r\n  }))\r\n\r\nnodes = from(bucket: \"measurements\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"sensor\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"rssi_avg\")\r\n  |> group(columns: [\"mac_addr\"])\r\n  |> last() // Get the latest value for each mac_addr\r\n  |> map(fn: (r) => ({\r\n      id: r.mac_addr,\r\n      title: r.mac_addr,\r\n      mainstat: string(v: r._value),\r\n      secondarystat: \"N/A\", // Or calculate if relevant\r\n      color: if r._value < -80 then \"red\" else if r._value < -60 then \"orange\" else \"green\",\r\n      icon: \"eye\", // Example, choose based on your preference\r\n      highlighted: r._value < -70 // Example condition\r\n  }))\r\n\r\n\r\n\r\n// Output nodes and edges for the Node Graph\r\n\r\nedges\r\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Panel Title",
+      "type": "nodeGraph"
     }
   ],
   "preload": false,
@@ -528,6 +757,6 @@
   "timezone": "",
   "title": "IOT - OpenThread",
   "uid": "blLmWjtVz",
-  "version": 10,
+  "version": 11,
   "weekStart": ""
 }
