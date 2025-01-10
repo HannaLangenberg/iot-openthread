@@ -52,12 +52,13 @@ from paho.mqtt.enums import CallbackAPIVersion
 import paho.mqtt.client as mqtt
 
 ###
-# locations = {
-#     "3a:4f:ec:85:c0:65:36:19" : "Büro 1.08",
-#     "8e:d0:82:0b:a8:e5:c8:93" : "Roboterlabor",
-#     "52:9d:cd:3b:8a:73:dd:58" : "Besprechungsraum",
-#     "9a:d6:18:d1:e5:e5:7d:4b" : "UIC"
-# }
+locations = {
+    "3a:4f:ec:85:c0:65:36:19" : "raum_1_08",
+    "8e:d0:82:0b:a8:e5:c8:93" : "roboterlabor",
+    "52:9d:cd:3b:8a:73:dd:58" : "besprechungsraum",
+    "9a:d6:18:d1:e5:e5:7d:4b" : "uic",
+    "be:73:09:12:a3:31:2e:52" : "erste_etage_flur"
+}
 ###
 
 # Logging setup
@@ -99,19 +100,24 @@ class MQTT_Bridge(resource.Resource):
             mac_address = list(parsed_data.values())[0]
             
             ###
-            # mac_address = "".join(mac_address.split())
-            # mac_address = mac_address.lower()
-            # if mac_address in locations:
-            #     parsed_data["location"] = locations[mac_address]
+            mac_address = "".join(mac_address.split())
+            mac_address = mac_address.lower()
+            if mac_address in locations:
+                parsed_data["location"] = locations[mac_address]
             
-            
-            # topic = f"{topic}/{parsed_data["location"]}" if mac_address in locations else f"{topic}/{mac_address}"
+            for neighbor in parsed_data["neighbor_rssi"]:
+                neighbor["neighbor_location"] = locations[neighbor["MAC"]]
+                
+            topic = f"{topic}/{parsed_data["location"]}" if mac_address in locations else f"{topic}/{mac_address}"
+
             ###
             
-            topic = f"{topic}/{mac_address}"
+            new_payload = json.dumps(parsed_data)
+            
+            # topic = f"{topic}/{mac_address}"
             res = client.publish(
                 topic=topic, 
-                payload=payload
+                payload=new_payload
             )
             log.info(f"Published topic '{topic}'")
             status = res[0]
