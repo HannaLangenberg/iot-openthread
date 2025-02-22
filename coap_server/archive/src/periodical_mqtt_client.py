@@ -6,7 +6,7 @@ import paho.mqtt.client as mqtt  # type: ignore
 from paho.mqtt.enums import CallbackAPIVersion  # type: ignore
 from datetime import datetime
 import json
-from mqtt_client import MqttClient
+from coap_server.src.archive.mqtt_client import MqttClient
 
 client = MqttClient()
 logging.basicConfig(level=logging.INFO)
@@ -39,12 +39,6 @@ example_payload = {
         },
     ]
 }
-f""" @Mohamed:
-Daten wie sie an CoAP ankommen:
-Endpoint: /sensor
-Payload: {example_payload}
-"""
-
 
 dummy_data = {
     "52:9d:cd:3b:8a:73:dd:58":
@@ -178,14 +172,6 @@ def publish_messages_periodically():
                 values["timestamp_ms"] = timestamp
                 
                 json_string = json.dumps(values)
-                f""" @Mohamed
-                Die Daten wie hier publishen. Payload ist dabei die Daten vom H2 als
-                json string. Der topic ist sensor/[mac_address vom H2]
-                Alle Daten von jedem H2 kommen am CoAP server am Endpoint /sensor an. Du
-                musst die Daten einmal parsen als dict und die mac adresse da raus holen
-                und ans topic für mqtt anhängen.
-                Beispiel, wie die Daten bei CoAP ankommen: {example_payload}
-                """
                 client.publish_mqtt_message(topic=topic, payload=json_string)
                 
             time.sleep(10)
@@ -194,10 +180,6 @@ def publish_messages_periodically():
         client.disconnect_mqtt()
 
 if __name__ == "__main__":
-    """ @Mohamed
-    Den mqtt client initialisieren wie hier ↓
-    Die Umgebungsvariablen werden im docker compose für den Container aus .env gesetzt.
-    """
     mqtt_hostname = "mosquitto"
     port = int(os.getenv('MOSQUITTO_PORT', 1883))
     user = os.getenv('MOSQUITTO_USERNAME', "admin")

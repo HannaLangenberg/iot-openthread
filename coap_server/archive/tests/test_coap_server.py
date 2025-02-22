@@ -7,7 +7,7 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from coap_server.coap_server import AllResourcesHandler, Welcome, BlockResource, SeparateLargeResource, TimeResource, WhoAmI
+from coap_server.src.archive.coap_server import AllResourcesHandler, Welcome, BlockResource, SeparateLargeResource, TimeResource, WhoAmI
 
 class TestCoAPServer(unittest.TestCase):
     """

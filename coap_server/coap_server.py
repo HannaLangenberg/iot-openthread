@@ -289,7 +289,6 @@ def on_message(client, userdata, msg, properties):
     log.info(f"Received message: {msg.payload.decode()} on topic {msg.topic}")
     client.publish("iot/echo", msg.payload.decode())
 
-
 async def loop_coap():
     # Resource tree creation
     root = resource.Site()
@@ -349,11 +348,6 @@ if __name__ == "__main__":
 
 """
 async def main():
-    # Print a message to the console
-    print("Hello world")
-    # Log an informational message
-    logging.info("HELLO WORLD")
-
     # Resource tree creation
     root = resource.Site()  # Create the root resource site
     sensor = resource.Site() # Create a separate resource site for sensor data
