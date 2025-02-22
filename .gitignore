@@ -161,3 +161,6 @@ secrets/
 mosquitto/data/
 mosquitto/log/
 mosquitto/config/mosquitto.passwd
+
+#vscode
+.vscode
