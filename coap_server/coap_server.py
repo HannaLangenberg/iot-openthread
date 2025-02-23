@@ -1,57 +1,70 @@
 """
-This script sets up a CoAP server with various resources using the aiocoap library.
+This script sets up a CoAP server with various resources using the aiocoap library 
+and bridges it with MQTT.
+
+Authors:
+    - Jannik Schmöle
+    - Mohamed Chamharouch Aukili
 
 Imports:
-    from datetime import datetime: Used for generating current time in TimeResource.
-    import logging: Used for logging information and debugging messages.
-    import asyncio: Used for asynchronous programming and event loop management.
-    import aiocoap.resource as resource: Provides base classes for defining CoAP resources.
-    from aiocoap.numbers.contentformat import ContentFormat: Used for specifying content formats in responses.
-    import aiocoap: Provides core functionalities for CoAP protocol.
-    from aiocoap import Message, Code: Used for creating CoAP messages and specifying response codes.
+    Standard library:
+    - asyncio: Used for asynchronous programming and event loop management
+    - json: Used for parsing and creating JSON data
+    - logging: Used for logging information and debugging messages
+    - os: Used for environment variables
+    - datetime: Used for generating current time in TimeResource
+    - urllib.parse: Used for parsing URIs
+
+    CoAP related:
+    - aiocoap: Provides core functionalities for CoAP protocol
+    - aiocoap.resource: Provides base classes for defining CoAP resources
+    - aiocoap.Message, Code: Used for creating CoAP messages and response codes
+    - aiocoap.numbers.contentformat: Used for specifying content formats
+
+    MQTT related:
+    - paho.mqtt.client: MQTT client implementation
+    - paho.mqtt.enums: MQTT callback API version constants
 
 Classes:
+    MQTT_Bridge(resource.Resource):
+        Bridges CoAP requests to MQTT publications
+
     AllResourcesHandler(resource.Resource):
-        Handles all resources and responds with a generic message.
+        Generic handler for all resources
 
     Welcome(resource.Resource):
-        Provides a welcome message with multiple representations.
+        Welcome page with multiple representations
 
     BlockResource(resource.Resource):
-        Supports GET and PUT methods with blockwise transfer.
+        Demonstrates blockwise transfers
 
     SeparateLargeResource(resource.Resource):
-        Simulates a long-running operation and provides a large resource.
+        Demonstrates separate responses
 
     TimeResource(resource.ObservableResource):
-        Provides the current time and supports observation.
+        Observable time resource
 
     WhoAmI(resource.Resource):
-        Reports the client's network address.
-
-Functions:
-    main():
-        Sets up the CoAP server, creates resource trees, and runs the event loop.
-
-Entry Point:
-    If the script is run directly, the main function is executed.
+        Reports client network information
 """
+# Standard library imports
 import asyncio
-import logging
-from datetime import datetime
-import os
-from urllib.parse import urlparse
 import json
+import logging
+import os
+from datetime import datetime
+from urllib.parse import urlparse
 
+# Third-party imports - CoAP related
 import aiocoap  # type: ignore
 import aiocoap.resource as resource  # type: ignore
 from aiocoap import Message, Code  # type: ignore
 from aiocoap.numbers.contentformat import ContentFormat  # type: ignore
 
-from paho.mqtt.enums import CallbackAPIVersion
-import paho.mqtt.client as mqtt
+# Third-party imports - MQTT related
+import paho.mqtt.client as mqtt  # type: ignore
+from paho.mqtt.enums import CallbackAPIVersion  # type: ignore
 
-###
 locations = {
     "3a:4f:ec:85:c0:65:36:19" : "raum_1_08",
     "8e:d0:82:0b:a8:e5:c8:93" : "roboterlabor",
@@ -59,83 +72,131 @@ locations = {
     "9a:d6:18:d1:e5:e5:7d:4b" : "uic",
     "be:73:09:12:a3:31:2e:52" : "erste_etage_flur"
 }
-###
 
-# Logging setup
+# Constants
+DEFAULT_TOPIC = "sensor/default"
+LOG_FORMAT = '[%(asctime)s %(name)s %(levelname)s]: %(message)s'
+LOGGER_NAME = "coap2mqtt"
+
+# Configure logging with proper formatting and level
 logging.basicConfig(
     level=logging.INFO,
-    format='[%(asctime)s %(name)s %(levelname)s]: %(message)s'
+    format=LOG_FORMAT
 )
-log = logging.getLogger("coap2mqtt") # .setLevel(logging.DEBUG)
+log = logging.getLogger(LOGGER_NAME)
 
-# Create an MQTT client instance
+# Initialize MQTT client with modern API version
 client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
-DEFAULT_TOPIC = "sensor/default" # Fallback Topic
 
 class MQTT_Bridge(resource.Resource):
+    """
+    MQTT Bridge Resource Handler for CoAP-to-MQTT Message Forwarding
+    This class handles CoAP requests and forwards their payloads to an MQTT broker. It processes
+    incoming CoAP messages, extracts topics from the request URI, handles JSON payloads with 
+    device information including MAC addresses and neighbor RSSI data, and maps locations.
+    Attributes:
+        DEFAULT_TOPIC (str): Default MQTT topic used when path extraction fails
+        locations (dict): Mapping of MAC addresses to physical locations
+        client (mqtt.Client): MQTT client instance for publishing
+    Methods:
+        render(request: Message) -> Message:
+            Handles incoming CoAP requests and publishes their payload to MQTT broker
+    Example:
+        >>> bridge = MQTT_Bridge()
+        >>> # When receiving CoAP request with JSON payload:
+        >>> # {
+        >>> #    "mac_addr": "00:11:22:33:44:55",
+        >>> #    ...
+        >>> #    "neighbor_rssi": [{..., "MAC": "aa:bb:cc:dd:ee:ff", "RSSI_AVG": -70}]
+        >>> # }
+        >>> # Publishes to MQTT with location mapping and returns confirmation
+    Note:
+        - Expects JSON formatted payloads
+        - Handles MAC address normalization (lowercase, no spaces)
+        - Maps device locations based on MAC addresses
+        - Adds location information to neighbor devices
+        - Constructs MQTT topic as "{topic}/{location}" or "{topic}/{mac_address}"
+        - Provides detailed logging of operations and errors
+    Raises:
+        json.JSONDecodeError: If payload is not valid JSON
+        Exception: For general errors during message processing or MQTT publishing
+    """
     async def render(self, request: Message):
-        topic = DEFAULT_TOPIC
-        try:
-            requestUri = urlparse(request.get_request_uri())
-            topic = str(requestUri.path).removeprefix('/')
-
-            # Drop some topics that seem unreasonable
-            if topic == None or len(topic) < 1 or topic in ['/', '()', '#', '$']:
-                topic = DEFAULT_TOPIC
-        except:
-            log.error("Unable to get request uri")
-
+        """Handle incoming CoAP requests and forward to MQTT broker.
+        
+        Args:
+            request (Message): Incoming CoAP request
+            
+        Returns:
+            Message: CoAP response message
+        """
+        topic = self._extract_topic(request)
         payload = request.payload.decode('utf-8')
         
-        # Log or process the request        
-        log.info(f"Received request: {request.code} on {request.get_request_uri()} from {request.remote.hostinfo.split(':')[0]}")
-        log.info(f"Payload: {payload}")
+        log.info(f"Processing CoAP request from {request.remote.hostinfo.split(':')[0]}")
+        log.debug(f"Request details - URI: {request.get_request_uri()}, Code: {request.code}")
+        log.debug(f"Received payload: {payload}")
 
-        # Publish to MQTT Broker
         try:
-            # Parse the JSON data
             parsed_data = json.loads(payload)
+            enriched_data = self._enrich_data_with_locations(parsed_data)
+            topic = self._build_mqtt_topic(topic, enriched_data)
+            
+            self._publish_to_mqtt(topic, enriched_data)
+            
+            return Message(
+                code=Code.CONTENT,
+                payload=f"Successfully published {len(request.payload)} bytes".encode()
+            )
+            
+        except json.JSONDecodeError:
+            log.error("Failed to parse JSON payload")
+            return Message(code=Code.BAD_REQUEST)
+        except Exception as e:
+            log.error(f"Error processing request: {str(e)}")
+            return Message(code=Code.INTERNAL_SERVER_ERROR)
 
-            # Extract the MAC address
-            mac_address = list(parsed_data.values())[0]
+    def _extract_topic(self, request: Message) -> str:
+        """Extract MQTT topic from CoAP request URI."""
+        try:
+            request_uri = urlparse(request.get_request_uri())
+            topic = str(request_uri.path).removeprefix('/')
+            return topic if topic and topic not in ['/', '()', '#', '$'] else DEFAULT_TOPIC
+        except:
+            log.error("Failed to extract topic from request URI")
+            return DEFAULT_TOPIC
+
+    def _enrich_data_with_locations(self, data: dict) -> dict:
+        """Add location information to device and neighbor data."""
+        mac_address = list(data.values())[0].lower().replace(" ", "")
+        
+        if mac_address in locations:
+            data["location"] = locations[mac_address]
             
-            ###
-            mac_address = "".join(mac_address.split())
-            mac_address = mac_address.lower()
-            if mac_address in locations:
-                parsed_data["location"] = locations[mac_address]
-            
-            for neighbor in parsed_data["neighbor_rssi"]:
+        for neighbor in data["neighbor_rssi"]:
+            if neighbor["MAC"] in locations:
                 neighbor["neighbor_location"] = locations[neighbor["MAC"]]
                 
-            topic = f"{topic}/{parsed_data["location"]}" if mac_address in locations else f"{topic}/{mac_address}"
+        return data
 
-            ###
-            
-            new_payload = json.dumps(parsed_data)
-            
-            # topic = f"{topic}/{mac_address}"
-            res = client.publish(
-                topic=topic, 
-                payload=new_payload
-            )
-            log.info(f"Published topic '{topic}'")
-            status = res[0]
-            if status == 0:
-                logging.info("Message published to topic " + topic)
-                logging.debug("Message "+ str(payload) + " is published to topic " + topic)
-            else:
-                logging.error("Failed to send message to topic " + topic)
-                if not self.client.is_connected():
-                    logging.error("Client was not connected")
-        except Exception as e:
-            log.error(f'Failed to publish topic {topic}: "{e}"')
+    def _build_mqtt_topic(self, base_topic: str, data: dict) -> str:
+        """Construct full MQTT topic path."""
+        mac_address = list(data.values())[0].lower().replace(" ", "")
+        location_or_mac = data.get("location", mac_address)
+        return f"{base_topic}/{location_or_mac}"
 
-        # Respond with a generic message
-        return Message(
-            code=Code.CONTENT,
-            payload=f"Published {len(request.payload)} bytes".encode()
-        )
+    def _publish_to_mqtt(self, topic: str, data: dict) -> None:
+        """Publish enriched data to MQTT broker."""
+        payload = json.dumps(data)
+        result = client.publish(topic=topic, payload=payload)
+        
+        if result[0] == 0:
+            log.info(f"Successfully published message to MQTT topic: {topic}")
+            log.debug(f"Published payload: {payload}")
+        else:
+            log.error(f"Failed to publish to MQTT topic: {topic}")
+            if not client.is_connected():
+                log.error("MQTT client connection lost")
 
 # Handler for all resources, responds with a generic message
 class AllResourcesHandler(resource.Resource):
@@ -278,103 +339,111 @@ class WhoAmI(resource.Resource):
 
         return aiocoap.Message(content_format=0, payload="\n".join(text).encode("utf8"))
 
+# MQTT Callbacks
 def on_connect(client, userdata, flags, rc, properties):
     if rc == 0:
         log.info("Connected successfully!")
     else:
         log.error(f"Connection failed with code {rc}")
 
-
 def on_message(client, userdata, msg, properties):
     log.info(f"Received message: {msg.payload.decode()} on topic {msg.topic}")
     client.publish("iot/echo", msg.payload.decode())
 
-async def loop_coap():
-    # Resource tree creation
+async def loop_coap() -> None:
+    """Initialize and run the CoAP server with configured resources.
+    
+    Sets up the resource tree, configures well-known endpoints for CoRE protocol discovery,
+    and starts the CoAP server on the specified address and port.
+    
+    The server provides the following endpoints:
+    - /.well-known/core: Resource discovery (CoRE Link Format)
+    - /: Welcome page with multiple representations
+    - /time: Observable current time resource
+    - /whoami: Client network information
+    - /sensor: MQTT bridge for sensor data
+    
+    Environment Variables:
+        COAP_BIND_NAME (str): Hostname to bind the server to (default: "localhost")
+        COAP_PORT (int): Port number for the CoAP server (default: 5683)
+    
+    Note:
+        Port 5683 is standard for unencrypted CoAP
+        Port 5684 is standard for DTLS-secured CoAP
+    """
+    # Initialize resource tree
     root = resource.Site()
 
-    # .well.known/* resources
-    # CoRE protocol allows for automatic discovery of all endpoints
-    # this server provides
+    # Configure CoRE resource discovery
     root.add_resource(
-        [".well-known", "core"], resource.WKCResource(root.get_resources_as_linkheader)
+        [".well-known", "core"], 
+        resource.WKCResource(root.get_resources_as_linkheader)
     )
 
-    # /* resources
+    # Add application resources
     root.add_resource([], Welcome())
     root.add_resource(["time"], TimeResource())
     root.add_resource(["whoami"], WhoAmI())
-
-    # sensor/* resources
     root.add_resource(['sensor'], MQTT_Bridge())
 
-    # 5683 is the port for unencrypted coap
-    # 5684 is the port for DTLS coap
+    # Configure server address from environment
     coap_addr = os.environ.get("COAP_BIND_NAME", "localhost")
     coap_port = int(os.environ.get("COAP_PORT", 5683))
+    
+    # Start server context
     await aiocoap.Context.create_server_context(root, bind=(coap_addr, coap_port))
-
-    # Run forever
+    
+    # Keep server running indefinitely
     await asyncio.get_running_loop().create_future()
 
 
-if __name__ == "__main__":
+async def main() -> None:
+    """Initialize and run the MQTT client and CoAP server.
+    
+    Sets up MQTT client connection with credentials and starts both
+    the MQTT client loop and CoAP server.
+    
+    Environment Variables:
+        MQTT_SERVER (str): MQTT broker address (default: "mosquitto")
+        MQTT_PORT (int): MQTT broker port (default: 1883)
+        MQTT_USER (str): MQTT username (default: "admin")
+        MQTT_PASSWORD (str): MQTT password (default: "123456789")
+    
+    Raises:
+        ConnectionRefusedError: If MQTT broker connection fails
+        Exception: For other MQTT-related errors
+    """
+    # Configure MQTT callbacks
     client.on_connect = on_connect
     client.on_message = on_message
 
+    # Configure MQTT connection parameters
     broker_addr = os.environ.get("MQTT_SERVER", "mosquitto")
-    # broker_addr = os.environ.get("MQTT_SERVER", "mqtt")
     broker_port = int(os.environ.get("MQTT_PORT", 1883))
     log.info(f'Connecting to "mqtt://{broker_addr}:{broker_port}" ...')
 
     try:
+        # Setup MQTT authentication
         client.username_pw_set(
-            username=os.environ.get("MQTT_USER", "admin"), 
+            username=os.environ.get("MQTT_USER", "admin"),
             password=os.environ.get("MQTT_PASSWORD", "123456789")
         )
+        # Establish MQTT connection
         client.connect(
             broker_addr,
             port=broker_port,
             keepalive=60
         )
     except ConnectionRefusedError as e:
-        log.error(f'Connection to MQTT failed: "{e}"')
+        log.error(f'MQTT connection failed: "{e}"')
+        raise
     except Exception as e:
-        log.error(f'Exception in MQTT lib: "{e}"')
+        log.error(f'MQTT client error: "{e}"')
+        raise
 
-    # Start CoAP Server & MQTT Client
+    # Start services
     client.loop_start()
-    asyncio.run(loop_coap())
+    await loop_coap()
 
-"""
-async def main():
-    # Resource tree creation
-    root = resource.Site()  # Create the root resource site
-    sensor = resource.Site() # Create a separate resource site for sensor data
-
-    # Add resources to the root site
-    root.add_resource(
-        [".well-known", "core"], resource.WKCResource(root.get_resources_as_linkheader)
-    )
-    root.add_resource([], Welcome())
-    root.add_resource(["time"], TimeResource())
-    root.add_resource(["other", "block"], BlockResource())
-    root.add_resource(["other", "separate"], SeparateLargeResource())
-    root.add_resource(["whoami"], WhoAmI())
-    # root.add_resource([''], AllResourcesHandler())  # Example of adding a handler for all resources
-
-    # Add resources to the sensor site
-    sensor.add_resource(['data'], AllResourcesHandler())  # Add a data resource to the sensor site
-    root.add_resource(['sensor'], sensor)  # Add the sensor site to the root site
-
-    # Create and bind the CoAP server context to the specified address and port
-    await aiocoap.Context.create_server_context(root, bind=('0.0.0.0', 5683))
-
-    # Run the event loop forever
-    await asyncio.get_running_loop().create_future()
-
-# Entry point for the script
 if __name__ == "__main__":
-    # Run the main function
     asyncio.run(main())
-"""

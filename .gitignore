@@ -164,3 +164,6 @@ mosquitto/config/mosquitto.passwd
 
 #vscode
 .vscode
+
+#other
+test
